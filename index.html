@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IndexedDB API</title>
+  <script src="./idb.js"></script>
+</head>
+<body>
+  <a href="https://developer.mozilla.org/es/docs/Web/API/IndexedDB_API" target="_blank"><h2>IndexedDB API</h2></a>
+  <button onclick="creaDb('listaDB2','personas')">Iniciar Db</button>
+  <button onclick="jsonToIndexedDB('listaDB2','personas')">Rellena Db</button>
+  <button onclick="listaDb('listaDB2','personas')">Lista Db</button>
+  <button onclick="limpiarDb('listaDB2','personas')">Limpia Tabla</button>
+  <button onclick="borrarDb('listaDB2')">Borrar Db</button>
+
+  <article id="listadoDb"></article>
+<script>
+  usoIndexedDB()
+
+  //01) Muestra por consola el uso de storage
+  async function usoIndexedDB() {
+      const estimate = await navigator.storage.estimate();
+      console.log(estimate)
+  }
+
+  //02) Inicializa IndexedDB
+  async function creaDb(nombreDB,nombreTabla,id='id') {
+    const db = await idb.openDb(nombreDB, 1, db => {
+      db.createObjectStore(nombreTabla, {keyPath: id});
+    });
+  }
+
+  //03) Rellena una tabla con datos de un json
+  async function jsonToIndexedDB(nombreDB,nombreTabla,id) {
+    const url = `https://jsonplaceholder.typicode.com/users`
+    const response = await fetch(url)
+    const datos = await response.json()
+    const db = await idb.openDb(nombreDB)
+    for(const dato of datos){
+      let tx = db.transaction(nombreTabla, 'readwrite')
+      await tx.objectStore(nombreTabla).add(dato);
+    }
+  }
+
+  //04) Muestra el contenido de IndexedDB
+  async function listaDb(nombreDB,nombreTabla) {
+    const listadoDb = document.querySelector('#listadoDb')
+    const db = await idb.openDb(nombreDB)
+    const tx = db.transaction(nombreTabla)
+    const datos = tx.objectStore(nombreTabla)
+    const listadoDatos  = await datos.getAll()
+
+    //Obtiene los nombres de las llaves en keysSet
+    const keys = listadoDatos.reduce((acc, item) => [...acc, ...Object.keys(item)], [])
+    const keysSet = Array.from(new Set(keys))
+    let contenidoTabla = `<table width="80%"><thead><tr>`
+    keysSet.forEach(elemento => {
+      contenidoTabla += `<th>${elemento}</th>`
+    })
+    contenidoTabla += `</tr></thead><tbody>`
+      for(const dato of listadoDatos){
+        contenidoTabla += `<tr>`
+          keysSet.forEach(elemento => {
+            contenidoTabla += `<td>${dato[elemento]}</td>`
+          })
+          contenidoTabla += `</tr>`
+      }
+    contenidoTabla += `</tbody></table>`
+    listadoDb.innerHTML = contenidoTabla
+  }
+
+  //05) Limpia IndexedDB
+  async function limpiarDb(nombreDB,nombreTabla) {
+    const db = await idb.openDb(nombreDB)
+    const tx = db.transaction(nombreTabla, 'readwrite')
+    await tx.objectStore(nombreTabla).clear();
+  }
+  //06) Borra Db
+  async function borrarDb(nombreDB) {
+    const DBDeleteRequest = window.indexedDB.deleteDatabase(nombreDB);
+  }
+  </script>
+</body>
+</html>
